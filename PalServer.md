@@ -325,3 +325,9 @@ OptionSettings=(Difficulty=None,DayTimeSpeedRate=0.500000,NightTimeSpeedRate=2.0
 
 > 如果想让自己的服务器能在社群服务器中被搜索到，可以在括号里加上 EpicApp=PalServer
 > 普通服务器加入ServerPassword的，使用IP地址联系将不会弹出密码输入框，需等待官方修复
+
+
+
+### 其他内容
+互动地图查询 https://map.caimogu.cc/palworld/paru_islands.html
+帕鲁配对查询 https://palworld.caimogu.cc/breed.html
