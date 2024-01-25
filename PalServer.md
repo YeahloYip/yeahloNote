@@ -1,5 +1,161 @@
 # Palworld Server Setup
 
+### 安装
+
+#### Linux系统选择推荐
+Ubuntu Server 22.04 LTS 64bit
+
+#### 安装steamcmd
+使用非root账户执行安装
+
+可以考虑自建一个steam账户
+```
+sudo useradd -m steam
+sudo passwd steam
+sudo -u steam -s
+cd /home/steam
+```
+
+```
+sudo add-apt-repository multiverse; sudo dpkg --add-architecture i386; sudo apt update
+sudo apt install steamcmd
+```
+
+#### 安装PalWorld Server
+
+```
+steamcmd +login anonymous +app_update 2394010 validate +quit
+```
+
+下载完成后，更改到下载目录。通常在用户的主目录下，但如果您已经为SteamCMD设置了安装目录，请自行切换。
+```
+cd ~/Steam/steamapps/common/PalServer
+```
+
+执行sh启动
+```
+./PalServer.sh
+```
+
+
+如果启动时出现以下消息，则可以通过执行以下步骤更正错误。
+
+如果在服务器运行后执行此过程，则游戏将从角色重新创建开始。我们建议您不要在已经运行的服务器上执行此操作。
+```
+.steam/sdk64/steamclient.so: cannot open shared object file: No such file or directory
+```
+
+要解决此问题
+```
+mkdir -p ~/.steam/sdk64/
+steamcmd +login anonymous +app_update 1007 +quit
+cp ~/Steam/steamapps/common/Steamworks\ SDK\ Redist/linux64/steamclient.so ~/.steam/sdk64/
+```
+
+错误在启动时显示一次。如果显示[.steam/sdk64/streamclient.so OK。（First tryd local'stemclient.so'）]，则没有问题。
+```
+$ ./PalServer.sh
+Shutdown handler: initalize.
+Increasing per-process limit of core file size to infinity.
+dlopen failed trying to load:
+steamclient.so
+with error:
+steamclient.so: cannot open shared object file: No such file or directory
+[S_API] SteamAPI_Init(): Loaded '/home/ubuntu/.steam/sdk64/steamclient.so' OK.  (First tried local 'steamclient.so')
+```
+
+#### 创建systemctl
+创建systemctl文件
+```
+vi pal-server.service
+```
+
+编辑以下内容
+```
+[Unit]
+Description=pal-server.service
+
+[Service]
+Type=simple
+User=自行修改为执行用户名
+Restart=on-failure
+RestartSec=30s
+ExecStart=/home/自行修改为执行用户名/Steam/steamapps/common/PalServer/PalServer.sh -useperfthreads -NoAsyncLoadingThread -UseMultithreadForDS
+
+[Install]
+WantedBy=multi-user.target
+```
+
+> 官方建议启用命令高级配置  
+> port=8211	Change the port number used to listen to the server.  
+> players=32	Change the maximum number of participants on the server.  
+> -useperfthreads -NoAsyncLoadingThread -UseMultithreadForDS	Improves performance in multi-threaded CPU environments.  
+> It is effective up to a maximum of about 4 threads, and allocating more than this number of threads does not make much sense.  
+
+
+移动到系统文件夹
+```
+sudo mv pal-server.service /usr/lib/systemd/system/
+```
+
+启用服务，重启服务，查看服务的命令
+```
+sudo systemctl enable pal-server.service
+sudo systemctl restart pal-server.service
+sudo systemctl -l --no-pager status pal-server.service
+```
+
+### 内存优化
+#### 配置定时重启服务
+
+#### 增加swap
+> 建议将swap的大小设置为与系统内存一致
+
+- 执行命令，没有配置swap将不会有返回
+```
+swapon --show
+```
+
+- 创建swap
+```
+sudo fallocate -l 16G /swapfile
+```
+
+设置文件权限
+```
+sudo chmod 600 /swapfile
+```
+
+将文件格式化为swap格式
+```
+sudo mkswap /swapfile
+```
+
+启用swap文件
+```
+sudo swapon /swapfile
+```
+
+设置永久使用swap文件（系统在启动时自动启用swap文件）
+```
+sudo vim /etc/fstab
+```
+
+将以下内容写入到文件中
+```
+/swapfile   none    swap    sw    0   0
+```
+
+重新加载fstab文件
+```
+sudo swapon --all
+```
+
+验证swap设置是否成功
+```
+swapon --show
+```
+
 ### 各参数说明
 
 Difficulty=None  
@@ -164,5 +320,8 @@ bEnableDefenseOtherGuildPlayer=False
 ; Changes to this file will NOT be reflected on the server.
 ; To change the server settings, modify Pal/Saved/Config/LinuxServer/PalWorldSettings.ini.
 [/Script/Pal.PalGameWorldSettings]
-OptionSettings=(Difficulty=None,DayTimeSpeedRate=0.500000,NightTimeSpeedRate=2.000000,ExpRate=1.500000,PalCaptureRate=2.000000,PalSpawnNumRate=1.000000,PalDamageRateAttack=1.000000,PalDamageRateDefense=1.000000,PlayerDamageRateAttack=1.500000,PlayerDamageRateDefense=0.500000,PlayerStomachDecreaceRate=0.100000,PlayerStaminaDecreaceRate=0.100000,PlayerAutoHPRegeneRate=2.000000,PlayerAutoHpRegeneRateInSleep=5.000000,PalStomachDecreaceRate=0.100000,PalStaminaDecreaceRate=0.100000,PalAutoHPRegeneRate=2.000000,PalAutoHpRegeneRateInSleep=5.000000,BuildObjectDamageRate=1.000000,BuildObjectDeteriorationDamageRate=1.000000,CollectionDropRate=2.000000,CollectionObjectHpRate=0.500000,CollectionObjectRespawnSpeedRate=0.500000,EnemyDropItemRate=2.000000,DeathPenalty=None,bEnablePlayerToPlayerDamage=False,bEnableFriendlyFire=False,bEnableInvaderEnemy=True,bActiveUNKO=False,bEnableAimAssistPad=True,bEnableAimAssistKeyboard=False,DropItemMaxNum=2000,DropItemMaxNum_UNKO=100,BaseCampMaxNum=128,BaseCampWorkerMaxNum=20,DropItemAliveMaxHours=0.200000,bAutoResetGuildNoOnlinePlayers=False,AutoResetGuildTimeNoOnlinePlayers=72.000000,GuildPlayerMaxNum=20,PalEggDefaultHatchingTime=0.100000,WorkSpeedRate=2.000000,bIsMultiplay=False,bIsPvP=False,bCanPickupOtherGuildDeathPenaltyDrop=False,bEnableNonLoginPenalty=True,bEnableFastTravel=True,bIsStartLocationSelectByMap=True,bExistPlayerAfterLogout=False,bEnableDefenseOtherGuildPlayer=False,CoopPlayerMaxNum=4,ServerPlayerMaxNum=16,ServerName="SW Palworld Server",ServerDescription="",AdminPassword="shmily7314",ServerPassword="",PublicPort=8211,PublicIP="",RCONEnabled=False,RCONPort=25575,Region="",bUseAuth=True,BanListURL="https://api.palworldgame.com/api/banlist.txt")
+OptionSettings=(Difficulty=None,DayTimeSpeedRate=0.500000,NightTimeSpeedRate=2.000000,ExpRate=1.500000,PalCaptureRate=2.000000,PalSpawnNumRate=1.000000,PalDamageRateAttack=1.000000,PalDamageRateDefense=1.000000,PlayerDamageRateAttack=1.500000,PlayerDamageRateDefense=0.500000,PlayerStomachDecreaceRate=0.100000,PlayerStaminaDecreaceRate=0.100000,PlayerAutoHPRegeneRate=2.000000,PlayerAutoHpRegeneRateInSleep=5.000000,PalStomachDecreaceRate=0.100000,PalStaminaDecreaceRate=0.100000,PalAutoHPRegeneRate=2.000000,PalAutoHpRegeneRateInSleep=5.000000,BuildObjectDamageRate=1.000000,BuildObjectDeteriorationDamageRate=1.000000,CollectionDropRate=2.000000,CollectionObjectHpRate=0.500000,CollectionObjectRespawnSpeedRate=0.500000,EnemyDropItemRate=2.000000,DeathPenalty=None,bEnablePlayerToPlayerDamage=False,bEnableFriendlyFire=False,bEnableInvaderEnemy=True,bActiveUNKO=False,bEnableAimAssistPad=True,bEnableAimAssistKeyboard=False,DropItemMaxNum=2000,DropItemMaxNum_UNKO=100,BaseCampMaxNum=128,BaseCampWorkerMaxNum=20,DropItemAliveMaxHours=0.200000,bAutoResetGuildNoOnlinePlayers=False,AutoResetGuildTimeNoOnlinePlayers=72.000000,GuildPlayerMaxNum=20,PalEggDefaultHatchingTime=0.100000,WorkSpeedRate=2.000000,bIsMultiplay=False,bIsPvP=False,bCanPickupOtherGuildDeathPenaltyDrop=False,bEnableNonLoginPenalty=True,bEnableFastTravel=True,bIsStartLocationSelectByMap=True,bExistPlayerAfterLogout=False,bEnableDefenseOtherGuildPlayer=False,CoopPlayerMaxNum=4,ServerPlayerMaxNum=16,ServerName="SW Palworld Server",ServerDescription="",AdminPassword="",ServerPassword="",PublicPort=8211,PublicIP="",RCONEnabled=False,RCONPort=25575,Region="",bUseAuth=True,BanListURL="https://api.palworldgame.com/api/banlist.txt")
 ```
+
+> 如果想让自己的服务器能在社群服务器中被搜索到，可以在括号里加上 EpicApp=PalServer
+> 普通服务器加入ServerPassword的，使用IP地址联系将不会弹出密码输入框，需等待官方修复
